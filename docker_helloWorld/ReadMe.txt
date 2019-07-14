@@ -59,7 +59,7 @@ helm template install/kubernetes/helm/istio-init --name istio-init --namespace i
 
 - apply configuration profile
 
-helm template install/kubernetes/helm/istio --name istio --namespace istio-system | kubectl apply -f -
+helm template install/kubernetes/helm/istio --name istio --namespace istio-system  --set kiali.enabled=true --set gateways.istio-ingressgateway.type=LoadBalancer --set tracing.enabled=true  --set grafana.enabled=true | kubectl apply -f -
 
 - verify installation
 
@@ -108,7 +108,18 @@ istio-ingressgateway   LoadBalancer   10.98.228.44   localhost     15020:31913/T
 
 - we need to open the correct ports and then setup the routing inside kubernetes
 
+# kiali
 
+- configure the authentication for kiali
+
+ kubectl apply -f kiali.yaml
+ 
+
+kubectl -n istio-system get svc kiali
+
+- forward the port
+
+kubectl -n istio-system port-forward $(kubectl -n istio-system get pod -l app=kiali -o jsonpath='{.items[0].metadata.name}') 20001:20001
 
 
 # to deploy
@@ -121,6 +132,10 @@ kubectl apply -f helloworld-virtualservice.yaml
 # to forward a port directly to a pod / port
 
 kubectl port-forward     $(kubectl get pod -l app=helloworldapp -o jsonpath='{.items[0].metadata.name}')      8080:80
+
+
+
+
 
 # Uninstall istio
 

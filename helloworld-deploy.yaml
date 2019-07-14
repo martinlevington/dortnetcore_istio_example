@@ -11,7 +11,7 @@ spec:
         version: v1
     spec:
       containers:
-        -  name: helloworldapp
+        -  name: helloworld
            image: docker_hello_world:latest
            imagePullPolicy: IfNotPresent
            ports:
