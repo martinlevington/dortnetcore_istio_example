@@ -1,32 +1,28 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: helloworldapp
+  name: pingservice
 spec:
   replicas: 1
   selector:
     matchLabels:
-      tier: frontend
+      tier: backend
   template:
     metadata:
       labels:
-        app: helloworldapp
-        version: v1.6
-        tier: frontend
+        app: pingserviceapp
+        version: v1.4
+        tier: backend
     spec:
       containers:
-        - name: helloworld-container
-          image: docker_hello_world:1.6
+        - name: pingservice-container
+          image: ping_service:1.4
           imagePullPolicy: IfNotPresent
-          volumeMounts:
-          - name: settings
-            mountPath: /app/settings
-            readOnly: true
           env:
           - name: ASPNETCORE_ENVIRONMENT
             value: Development
           ports:
-           - containerPort: 80
+            - containerPort: 80
           livenessProbe:
             httpGet:
               path: /meta/health/live
@@ -48,7 +44,3 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "0.2"
-      volumes:
-        - name: settings
-          secret:
-            secretName: helloworld-appsettings

@@ -89,7 +89,7 @@ http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kube
 - run the followingto enabke access to the admin dash board
 kubectl proxy
 
-# auto sidecar injection
+ .# auto sidecar injection
 
 kubectl label namespace default istio-injection=enabled
 
@@ -113,7 +113,7 @@ istio-ingressgateway   LoadBalancer   10.98.228.44   localhost     15020:31913/T
 - configure the authentication for kiali
 
  kubectl apply -f kiali.yaml
- 
+
 
 kubectl -n istio-system get svc kiali
 
@@ -142,3 +142,15 @@ kubectl port-forward     $(kubectl get pod -l app=helloworldapp -o jsonpath='{.i
 helm delete --purge istio
 helm delete --purge istio-init
 
+# ping an internal service usi g busybox image
+
+- note the name of the service is set in the service config
+kubectl exec -ti busybox -- nslookup pingservice-service
+
+# create a secret - called 'helloworld-appsettings' from a file
+
+kubectl create secret generic helloworld-appsettings --from-file=./docker_helloWorld/appsettings.docker.json
+
+
+ kubectl apply -f helloworld-deploy.yaml
+ kubectl apply -f pingService-deploy.yaml

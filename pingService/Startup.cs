@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using docker_helloWorld.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
@@ -11,9 +10,9 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using pingService.Models;
 
-namespace docker_helloWorld
+namespace pingService
 {
     public class Startup
     {
@@ -27,12 +26,6 @@ namespace docker_helloWorld
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddLogging(loggingBuilder =>
-            {
-                loggingBuilder.AddConsole();
-                loggingBuilder.AddDebug();
-            });
-
             services.Configure<CookiePolicyOptions>(options =>
             {
                 // This lambda determines whether user consent for non-essential cookies is needed for a given request.
@@ -40,26 +33,26 @@ namespace docker_helloWorld
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-
             // Registers required services for health checks
             services.AddHealthChecks()
             .AddCheck<ReadyHealthCheck>("Ready", failureStatus: null, tags: new[] { "ready", });
-
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
-           
 
-            var logger = loggerFactory.CreateLogger<Startup>();
-
-            logger.LogInformation($"Host: {Environment.MachineName}");
-            logger.LogInformation($"EnvironmentName: {env.EnvironmentName}");
-            logger.LogInformation($"PingService:Url: {Configuration["PingService:Url"]}");
-            logger.LogInformation($"HelloWorld:Url: {Configuration["HelloWorld:Url"]}");
+            // This will register the health checks middleware at the URL /health.
+            // 
+            // By default health checks will return a 200 with 'Healthy'.
+            // - No health checks are registered by default, the app is healthy if it is reachable
+            // - The default response writer writes the HealthCheckStatus as text/plain content
+            //
+            // This is the simplest way to use health checks, it is suitable for systems
+            // that want to check for 'liveness' of an application.
+          //  app.UseHealthChecks("/meta/health");
 
             // The readiness check uses all registered checks with the 'ready' tag.
             app.UseHealthChecks("/meta/health/ready", new HealthCheckOptions()

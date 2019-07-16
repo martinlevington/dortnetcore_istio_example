@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace docker_helloWorld
+namespace pingService
 {
     public class Program
     {
@@ -18,13 +18,11 @@ namespace docker_helloWorld
         }
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-
-            // kubectl create secret generic helloworld-appsettings --from-file=./appsettings.docker.json
             WebHost.CreateDefaultBuilder(args)
-              .ConfigureAppConfiguration((buildercontext, config) =>
-              {
-                  config.AddJsonFile("settings/appsettings.docker.json", optional: true);
-              })
+            .ConfigureAppConfiguration((buildercontext, config) =>
+            {
+                config.AddJsonFile("settings/appsettings.docker.json", optional:true);
+            })
                 .UseStartup<Startup>();
     }
 }
