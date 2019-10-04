@@ -1,0 +1,110 @@
+trigger:
+  batch: true
+  branches:
+    include:
+      - develop
+      - feature/*
+      - release/*
+      - hotfix/*
+      - master
+
+variables:
+- group: CodeQualityTargets
+- name: Solution_SolutionFile
+  value: theNBS.Analytics.Warehouse.sln
+- name: Solution_ProjectFiles
+  value: '**/*.csproj'
+- name: Solution_TestProjects
+  value: '**/*test*.csproj'
+- name: Branch_Name
+  value: '$(Build.SourceBranchName)'
+
+jobs:
+
+- job: variableSetup  
+  pool:
+    name: 'ncl-s-build03' 
+    vmImage: 'VS2017-Win2016'
+
+  steps:
+  - bash: echo '##vso[task.setvariable variable=BuildMode;isOutput=true]Debug'
+    name: setBuildMode
+    condition: and(ne(variables['Branch_Name'], 'master'), not(startsWith(variables['Branch_Name'], 'release/')), not(startsWith(variables['Branch_Name'], 'hotfix/')))
+  - script: echo $(setBuildMode.BuildMode)
+
+- job: 'BuildTestPublish'
+  dependsOn:
+    - variableSetup
+
+  variables:
+    calculatedBuildMode: $[dependencies.variableSetup.outputs['setBuildMode.BuildMode']]
+
+  pool:
+    name: 'ncl-s-build03'
+    vmImage: 'VS2017-Win2016'
+
+  displayName: 'Build > Test > Publish'
+
+  steps:
+  - task: gittools.gitversion.gitversion-task.GitVersion@3
+    displayName: GitVersion
+    inputs:
+      updateAssemblyInfo: true
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Build ($(calculatedBuildMode))'
+    inputs:
+      projects: '$(Solution_SolutionFile)'
+      arguments: '--configuration $(calculatedBuildMode)'
+
+  - task: DotNetCoreCLI@2
+    condition: eq(variables['calculatedBuildMode'], 'Debug')
+    displayName: Coverlet
+    inputs:
+      command: test
+      projects: '$(Solution_TestProjects)'
+      arguments: ' --no-build /p:Threshold=$(UnitTestCoveragePercentTarget) /p:Threshold-Type=line /p:Threshold-Type=branch /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)/TestResults/Coverage/coverage.cobertura.xml '
+    continueOnError: true
+
+  - script: |
+      mkdir $(Build.SourcesDirectory)\results
+      dotnet tool install dotnet-reportgenerator-globaltool --tool-path . --version 4.0.0-rc4
+      .\reportgenerator "-reports:$(Build.SourcesDirectory)/TestResults/Coverage/coverage.cobertura.xml" "-targetdir:$(Build.SourcesDirectory)/results" "-reporttypes:HTMLInline;HTMLChart"
+    displayName: 'Coverlet: Generate Report'    
+    condition: eq(variables['calculatedBuildMode'], 'Debug')
+    
+  - task: PublishCodeCoverageResults@1
+    condition: eq(variables['calculatedBuildMode'], 'Debug')
+    inputs:
+      summaryFileLocation: $(Build.SourcesDirectory)/TestResults/Coverage/coverage.cobertura.xml
+      reportDirectory: $(Build.SourcesDirectory)\results
+      codecoverageTool: cobertura
+
+  - task: alanwales.resharper-code-analysis.custom-build-task.ResharperCli@1
+    condition: eq(variables['calculatedBuildMode'], 'Debug')
+    displayName: 'Automated code quality checks'
+    inputs:
+      SolutionOrProjectPath: '$(Solution_SolutionFile)'
+      FailBuildLevelSelector: Warning
+      FailBuildOnCodeIssues: true
+      CommandLineInterfacePath: 'C:\\ReSharper'
+    continueOnError: true
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Publish ($(calculatedBuildMode))'
+    inputs:
+      command: publish
+      publishWebProjects: True
+      arguments: '--configuration $(calculatedBuildMode) --output $(build.artifactstagingdirectory)'
+      zipAfterPublish: True
+
+
+  - task: PublishTestResults@2
+    condition: eq(variables['calculatedBuildMode'], 'Debug')
+    inputs:
+      testRunner: VSTest
+      searchFolder: $(Agent.TempDirectory)
+      testResultsFiles: '**/*.trx'
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish build artifacts'
